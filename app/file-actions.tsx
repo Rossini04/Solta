@@ -1,0 +1,17 @@
+"use client";
+import { useState } from "react";
+import { Flag, Trash2, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { api, post } from "@/lib/client-api";
+import { PublicFile } from "@/lib/files";
+export function FileActions({ file, onDeleted }: { file: PublicFile; onDeleted: () => void }) {
+  const [reportOpen, setReportOpen] = useState(false), [busy, setBusy] = useState(false), [reason, setReason] = useState(""), [details, setDetails] = useState("");
+  async function remove() { setBusy(true); try { await api(`/api/files/${file.id}`, { method: "DELETE" }); toast.success("Arquivo excluído."); onDeleted(); } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); } }
+  async function report(e: React.FormEvent) { e.preventDefault(); setBusy(true); try { await post("/api/reports", { fileId: file.id, reason, details }); toast.success("Denúncia recebida para análise."); setReportOpen(false); setDetails(""); } catch (e) { toast.error((e as Error).message); } finally { setBusy(false); } }
+  return <>{file.canDelete ? <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" aria-label={`Excluir ${file.name}`} title="Excluir meu arquivo"><Trash2 size={16} /></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Excluir este arquivo?</AlertDialogTitle><AlertDialogDescription>O arquivo “{file.name}” será removido e o link deixará de funcionar. A exclusão não libera um novo envio antes das 2 horas.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Voltar</AlertDialogCancel><AlertDialogAction className="bg-red-700 text-white hover:bg-red-800" disabled={busy} onClick={remove}>Excluir arquivo</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog> : <Dialog open={reportOpen} onOpenChange={setReportOpen}><DialogTrigger asChild><Button variant="ghost" size="icon" aria-label={`Denunciar ${file.name}`} title="Denunciar arquivo"><Flag size={16} /></Button></DialogTrigger><DialogContent><DialogHeader><DialogTitle>Denunciar arquivo</DialogTitle><DialogDescription>Conte o que há de errado com “{file.name}”. A administração analisará a denúncia.</DialogDescription></DialogHeader><form onSubmit={report} className="form-stack"><label>Motivo<Select value={reason} onValueChange={setReason}><SelectTrigger className="w-full" aria-label="Motivo da denúncia"><SelectValue placeholder="Selecione um motivo" /></SelectTrigger><SelectContent>{["Conteúdo ilegal", "Arquivo malicioso", "Direitos autorais", "Dados pessoais", "Outro motivo"].map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></label><label>Detalhes<Textarea value={details} onChange={e => setDetails(e.target.value)} maxLength={2000} placeholder="Descreva o problema" /></label><Button className="primary-button" disabled={!reason || busy}>{busy && <Loader2 className="spin" />} Enviar denúncia</Button></form></DialogContent></Dialog>}</>;
+}
