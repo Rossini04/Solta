@@ -1,0 +1,7 @@
+// Rotas do Solta. O banco usa SQL com parâmetros separados dos dados.
+import { identity, member, rateLimit } from "./acesso.js";
+import { ApiError, handle, json, readJson, sameOrigin, storage } from "./banco.js";
+export async function GET(request) { return handle(async () => { const who = await identity(request); const group = new URL(request.url).searchParams.get("group"); if (!group)
+    throw new ApiError(400, "Selecione um grupo."); await member(group, who); const docs = await storage().db.prepare("SELECT id, name, group_id, updated_at FROM documents WHERE group_id = ? ORDER BY updated_at DESC LIMIT 100").bind(group).all(); return json({ documents: docs.results }); }); }
+export async function POST(request) { return handle(async () => { sameOrigin(request); const who = await identity(request); const body = await readJson(request); if (typeof body?.groupId !== "string" || typeof body.name !== "string" || !body.name.trim() || body.name.length > 100)
+    throw new ApiError(400, "Informe o grupo e um nome de até 100 caracteres."); await member(body.groupId, who); await rateLimit(`docs:${who.userId}`, 30, 3600000); const id = crypto.randomUUID(), now = Date.now(); await storage().db.prepare("INSERT INTO documents (id, group_id, name, owner_id, state, revision, created_at, updated_at) VALUES (?, ?, ?, ?, '', 0, ?, ?)").bind(id, body.groupId, body.name.trim(), who.userId, now, now).run(); return json({ id }, 201); }); }

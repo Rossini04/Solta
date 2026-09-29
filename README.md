@@ -1,72 +1,64 @@
 # Solta
 
-Compartilhamento de arquivos, pastas e documentos em grupo.
+Compartilhamento de arquivos com contas, pastas, grupos, documentos colaborativos e tela ao vivo. O código fica no seu GitHub; a aplicação usa a sua conta Cloudflare.
 
-**Site:** https://solta-arquivos-rossini.rosslni.chatgpt.site
+## Regras desta versão
 
-## Recursos
+- Cadastro com nome de usuário e senha para enviar arquivos. Downloads públicos não exigem conta.
+- Até **10 GB armazenados por conta**, somando todas as pastas e os envios incompletos. Um arquivo também pode ter até 10 GB. Excluir libera espaço; o site não apaga arquivos antigos para abrir espaço para um novo envio.
+- Arquivos públicos expiram **15 dias após concluir o envio**. O link para de funcionar no prazo; o armazenamento é limpo em lotes de dez, a cada cinco minutos. Uma fila grande pode atrasar a remoção física, mas não reabre o acesso.
+- Arquivos em pastas privadas e de grupos ficam até o dono excluir e contam na mesma cota. A regra de 15 dias foi aplicada aos arquivos públicos.
+- A configuração conserva o intervalo anterior de **um envio a cada duas horas**, agora por conta. Para permitir vários envios dentro dos 10 GB, mude `UPLOAD_INTERVAL_MS` para `"0"` em `wrangler.jsonc`. Essa escolha ainda aguarda confirmação do proprietário.
+- Limite inicial de **50 GB para o site inteiro**, compartilhado entre as contas. Os 10 GB são um teto por conta, não uma reserva garantida para cada pessoa.
+- Pastas públicas, privadas ou de grupos; senha opcional. Membros de grupos podem enviar arquivos às pastas do grupo.
+- Exclusão pelo dono e denúncias de outros arquivos. A administração pode remover arquivos denunciados.
+- Editor de texto conjunto com Tiptap e Yjs; compartilhamento de tela por WebRTC, sem gravação e sem áudio.
 
-- Um arquivo de até **10 GB (10.000.000.000 bytes) a cada 2 horas por IP**. O prazo começa ao iniciar o envio. Cancelar um envio incompleto libera a tentativa; excluir um arquivo já publicado mantém o intervalo.
-- Envio em partes de 8 MiB, progresso real, cancelamento e retomada das partes restantes enquanto a página permanece aberta.
-- Lista pública, download, link individual e botão para copiar o link. Downloads aceitam `Range` e `HEAD`.
-- Exclusão pelo autor e denúncias. Para visitantes, a exclusão exige o mesmo IP **e** a prova de autoria salva no navegador. Assim, outra pessoa na mesma rede não pode excluir o arquivo. Autores autenticados também podem excluir seus arquivos pela conta.
-- Pastas públicas, privadas ou de grupo, com senha opcional. A proteção também é verificada nos endpoints de download e upload.
-- Grupos com convite, lista de participantes e documentos compartilhados.
-- Editor de texto com títulos, negrito, itálico, listas, desfazer/refazer e edição conjunta usando Tiptap + Yjs. Atualizações concorrentes são mescladas no servidor e sincronizadas aproximadamente a cada 1,5 segundo.
-- Sala de tela ao vivo por documento, via WebRTC. A pessoa escolhe uma aba, janela ou tela no navegador e pode interromper a transmissão. Não há gravação nem captura automática.
-- Painel de denúncias em `/moderacao`, disponível para a conta definida em `ADMIN_EMAIL`.
+## Comece aqui
 
-Uploads públicos e downloads não exigem cadastro. Criar pastas, grupos e editar documentos exige entrar com ChatGPT.
-
-## Hospedagem e código
-
-O site é publicado pelo **Sites** e executa em **Cloudflare Workers**. Arquivos ficam em **R2** (`BUCKET`); metadados, permissões e documentos ficam em **D1** (`DB`). `.openai/hosting.json` contém apenas os vínculos lógicos e o identificador do Site.
-
-Este repositório contém o código. Um envio para o GitHub não muda a hospedagem, não copia os arquivos enviados pelos visitantes e não publica automaticamente uma nova versão. GitHub Pages, sozinho, não executa este backend. Para hospedar fora de Sites, será necessário provisionar R2/D1 e adaptar a autenticação: os cabeçalhos `oai-authenticated-user-*` só são confiáveis quando fornecidos pelo dispatcher do Sites.
-
-## Desenvolvimento
-
-Requer Node 22.13+ e npm.
+Instale o Node.js 22.13 ou superior, que inclui o npm. Abra um terminal nesta pasta:
 
 ```sh
 npm ci
-npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_shallow_random.sql
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0001_crazy_korath.sql
+npm run db:local
 npm run dev
 ```
 
-Aplique cada migração uma única vez em um banco local novo. Em Sites, o fluxo de publicação gerencia as migrações. Não altere migrações já publicadas: gere uma nova com `npm run db:generate`.
+Abra `http://127.0.0.1:8787`. Os dados dessa prévia são locais. Alterou HTML, CSS ou JavaScript do navegador? Pare o terminal com Ctrl+C e execute `npm run dev` novamente para reconstruir a interface.
 
-A prévia local oferece uma identidade fictícia pelo botão Entrar. Ela não autentica em produção. Configure `ADMIN_EMAIL` como segredo no Sites e publique novamente para aplicar a configuração. `.env.example` documenta a chave; valores reais nunca devem ser enviados ao GitHub.
+- **[Aprender e modificar](docs/APRENDER.md):** por onde começar e onde fica cada função.
+- **[Publicar na sua conta](docs/PUBLICAR.md):** conta Cloudflare, banco, arquivos e endereço público.
+- **[Custos e anúncios](docs/CUSTOS-E-ANUNCIOS.md):** limites do primeiro mês e publicidade.
+
+## Estrutura
+
+```text
+index.html       estrutura da página
+cliente/         JavaScript e CSS do navegador
+servidor/        JavaScript da API e das permissões
+banco/           SQL que cria as tabelas e os índices
+public/          ícone e cabeçalhos de segurança
+testes/          testes com banco e armazenamento temporários
+wrangler.jsonc   configuração da sua hospedagem
+```
+
+A interface usa HTML, CSS e JavaScript sem React. O Vite reúne os arquivos para publicar. O editor colaborativo usa bibliotecas porque sincronizar edições simultâneas é uma parte mais avançada do projeto.
 
 ## Testes
 
-O teste de integração usa apenas loopback e dados fictícios. Requer `curl`, disponível no Windows atual e em muitos ambientes Unix. Em um terminal, execute o build e inicie a prévia compilada:
-
 ```sh
 npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --port 8787 --inspector-port 0 --var ADMIN_EMAIL:test-admin@sites.test
+npm test
 ```
 
-Em outro terminal:
+Os testes usam Miniflare, D1 e R2 em memória. Verificam autenticação, recuperação, cota e concorrência, envio em partes, download parcial, expiração, limpeza, pastas, grupos, denúncias, sinais de tela e combinação de edições.
 
-```sh
-node tests/integration.mjs
-npx tsc --noEmit
-```
+O teste de transferência envia cerca de 16,8 MB em três partes. Os limites de 10 GB são verificados pela API e pelo banco, sem transmitir um arquivo inteiro de 10 GB. Sinais de WebRTC testados não comprovam transmissão de vídeo em todas as redes: redes restritas podem exigir um servidor TURN, ainda não configurado por causa do orçamento.
 
-O teste verifica limite de 10 GB e intervalo de 2 horas, upload em três partes de 16.778.553 bytes com comparação SHA-256, downloads, exclusão, denúncias, senhas, permissões de grupos, mesclagem concorrente Yjs e isolamento dos sinais de compartilhamento de tela. Os cabeçalhos de identidades fictícias só são injetados contra o servidor local.
+## Migração e situação da publicação
 
-## Limites atuais
+Esta é a versão independente. Ela não usa login, SDK, serviço ou hospedagem da OpenAI. O histórico Git conserva as versões antigas para recuperação.
 
-- O limite de 10 GB foi validado na API; ainda não foi realizado um upload completo de 10 GB.
-- O compartilhamento de tela usa STUN, sem servidor TURN. Redes restritas podem impedir a conexão entre participantes. A sinalização foi testada; uma transmissão de vídeo entre computadores em redes diferentes ainda precisa ser validada.
-- O editor trabalha com texto formatado. Não inclui o editor visual completo de designs, slides ou PDFs do Canva.
-- Documentos têm limite de tamanho; a sincronização depende de conexão. Aguarde o aviso de alterações salvas antes de fechar a página.
-- Pessoas na mesma rede compartilham o intervalo de envio. Se um visitante apagar os cookies ou mudar de IP, perde a opção de excluir envios anônimos anteriores.
-- Arquivos anteriores à implantação da autoria não têm dono identificável. A administração pode removê-los após análise de denúncia.
-- Arquivos completos não expiram automaticamente. Envios incompletos expiram na aplicação após 24 horas; a limpeza física das partes abandonadas depende da política do armazenamento.
+Os arquivos, contas e documentos do serviço anterior **não foram copiados** para o novo banco. O serviço anterior permanece separado. Antes de desligá-lo, salve os arquivos e documentos que quiser manter; contas da nova versão têm novo cadastro. Uma transferência dos dados antigos precisa de um procedimento específico que preserve os donos e as permissões.
 
-Referências: [R2 multipart uploads](https://developers.cloudflare.com/r2/api/workers/workers-multipart-usage/), [Yjs document updates](https://docs.yjs.dev/api/document-updates), [Screen Capture API](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia).
-
+O endereço definitivo na Cloudflare só existe depois de concluir `docs/PUBLICAR.md` com sua conta. O identificador de banco incluído na configuração é local e o comando de publicação rejeita esse identificador.

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Compartilhe arquivos, organize pastas e trabalhe em documentos com seu grupo.">
+    <title>Solta — arquivos e colaboração</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/cliente/estilo.css">
+    <script type="module" src="/cliente/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="/" aria-label="Solta, página inicial"><span class="brand-mark">↑</span>solta<span class="brand-dot">.</span></a>
+        <nav aria-label="Navegação principal">
+          <a href="/">Públicos</a><a href="/meus-arquivos">Meus arquivos</a><a href="/pastas">Pastas</a><a href="/grupos">Grupos</a>
+        </nav>
+        <div id="account" class="account-nav"><a class="button" href="/entrar">Entrar</a></div>
+      </div>
+    </header>
+    <main id="app" class="main-shell" tabindex="-1"><p>Carregando seus arquivos…</p></main>
+    <footer class="site-footer"><strong>solta.</strong><span>Arquivos públicos por até 15 dias.</span><a href="/sobre">Como funciona</a><a href="/privacidade">Privacidade</a></footer>
+    <div id="message" class="toast" role="status" hidden></div>
+    <dialog id="modal" aria-labelledby="modal-title"></dialog>
+  </body>
+</html>
